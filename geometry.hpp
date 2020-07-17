@@ -51,13 +51,14 @@ class Material {
     vec3 diffuse;
     vec3 specular;
     float phongExp;
-    //vec3 reflectance;
+    vec3 reflectance;
     
 public:
     Material();
-    Material(vec3 diff, vec3 spec, float p);
-    void set(vec3 diff, vec3 spec, float p);
-    vec3 calcShading(vec3 normal, vec3 location, struct Light lights[], int lightsUsed, Mesh objects[], int numObjects);
+    Material(vec3 diff, vec3 spec, float p, vec3 ref);
+    void set(vec3 diff, vec3 spec, float p, vec3 ref);
+    vec3 calcShading(vec3 normal, Light light, vec3 lightDir);
+    vec3 getReflectance();
 };
 
 class Mesh {
@@ -67,13 +68,14 @@ class Mesh {
     
 public:
     Mesh();
-    Mesh(float verts[], vec3 diff, vec3 spec, float p);
-    void set(float verts[], vec3 diff, vec3 spec, float p);
+    Mesh(float verts[], vec3 diff, vec3 spec, float p, vec3 ref);
+    void set(float verts[], vec3 diff, vec3 spec, float p, vec3 ref);
     vec3 getVertex( int ind );
     vec3 getNormal();
     bool intersects(Ray ray, float &time, float minTime, float maxTime);
     bool intersects(Ray ray, vec3 &location, vec3 &normal, float &time, float minTime, float maxTime);
-    vec3 calcShading(vec3 normal, vec3 location, struct Light lights[], int lightsUsed, Mesh objects[], int numObjects);
+    vec3 calcShading(vec3 normal, Light light, vec3 lightDir);
+    vec3 getReflectance();
 };
 
 

@@ -90,7 +90,7 @@ vec3 Sphere::calcShading(vec3 normal, vec3 location, struct Light lights[], int 
         
     }
     
-    return glm::min( total, vec3(255,255,255) );
+    return total;
 }
 
 // Mesh Class
@@ -103,18 +103,18 @@ Mesh::Mesh() {
 }
 
 // Vertices are stored counterclockwise
-Mesh::Mesh(float verts[], vec3 diff, vec3 spec, float p) {
+Mesh::Mesh(float verts[], vec3 diff, vec3 spec, float p, vec3 ref) {
     for (int i = 0; i < 9; i++) {
         vertices[i] = verts[i];
     }
-    material.set(vec3 diff, vec3 spec, float p);
+    material.set(diff, spec, p, ref);
 }
 
-void Mesh::set(float verts[], vec3 diff, vec3 spec, float p) {
+void Mesh::set(float verts[], vec3 diff, vec3 spec, float p, vec3 ref) {
     for (int i = 0; i < 9; i++) {
         vertices[i] = verts[i];
     }
-    material.set(vec3 diff, vec3 spec, float p);
+    material.set(diff, spec, p, ref);
 }
 
 vec3 Mesh::getVertex( int ind ) {
@@ -182,10 +182,15 @@ bool Mesh::intersects(Ray ray, vec3 &location, vec3 &normal, float &time, float 
     return success;
 }
 
-vec3 Mesh::calcShading(vec3 normal, vec3 location, struct Light lights[], int lightsUsed, Mesh objects[], int numObjects) {
+vec3 Mesh::calcShading(vec3 normal, Light light, vec3 lightDir) {
     
-    return material.calcShading(normal, location, lights, lightsUsed, objects[], numObjects);
+    return material.calcShading(normal, light, lightDir);
 }
+
+vec3 Mesh::getReflectance() {
+    return material.getReflectance();
+}
+
 
 // Material Class
 
@@ -193,51 +198,38 @@ Material::Material() {
     diffuse = vec3(0.0f);
     specular = vec3(0.0f);
     phongExp = 0;
+    reflectance = vec3(0.0f);
 }
 
-Material::Material(vec3 diff, vec3 spec, float p) {
+Material::Material(vec3 diff, vec3 spec, float p, vec3 ref) {
     diffuse = diff;
     specular = spec;
     phongExp = p;
+    reflectance = ref;
 }
 
-void Material::set(vec3 diff, vec3 spec, float p) {
+void Material::set(vec3 diff, vec3 spec, float p, vec3 ref) {
     diffuse = diff;
     specular = spec;
     phongExp = p;
+    reflectance = ref;
 }
 
-vec3 Material::calcShading(vec3 normal, vec3 location, struct Light lights[], int lightsUsed, Mesh objects[], int numObjects) {
+vec3 Material::calcShading(vec3 normal, Light light, vec3 lightDir) {
+    vec3 total = vec3(0.0f);
     
-    // Dummy variable to pass to the intersects function in place of time
-    float dummy;
+    //Calculate diffuse component
+    float LdotN = glm::dot(lightDir, normal);
+    total += diffuse * light.intensity * glm::max(LdotN, 0.0f);
     
-    vec3 total = vec3(0.1f);
-    bool inShadow;
-    
-    for (int i = 0; i < lightsUsed; i++) {
-        vec3 lightDir = glm::normalize(lights[i].position-location);
-        
-        //Test to see if any object blocks the light
-        Ray shadowRay = {location,lightDir};
-        inShadow = false;
-        int o = 0;
-        while (o < numObjects && inShadow == false) {
-            inShadow = objects[o].intersects(shadowRay, dummy);
-            o++;
-        }
-        // If the object is not in shadow, calculate the lighting
-        if (inShadow == false) {
-            //Calculate diffuse component
-            float LdotN = glm::dot(lightDir, normal);
-            total += diffuse * lights[i].intensity * glm::max(LdotN, 0.0f);
-            
-            //Calculate specular component
-            vec3 halfvec = glm::normalize(lightDir + normal);
-            float NdotH = glm::dot(normal, halfvec);
-            total += specular * lights[i].intensity * glm::pow( glm::max(NdotH, 0.0f), phongExp );
-        }
-    }
+    //Calculate specular component
+    vec3 halfvec = glm::normalize(lightDir + normal);
+    float NdotH = glm::dot(normal, halfvec);
+    total += specular * light.intensity * glm::pow( glm::max(NdotH, 0.0f), phongExp );
     
     return glm::min( total, vec3(255,255,255) );
+}
+
+vec3 Material::getReflectance() {
+    return reflectance;
 }

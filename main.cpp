@@ -49,41 +49,59 @@ Ray genCameraRay( int xCoor, int yCoor ) {
     return camRay;
 }
 
-vec3 raytrace( Ray ray ) {
+// Function is called once per view ray
+vec3 raytrace( Ray ray, int depth = 0 ) {
+    
+    // Exit Condition
+    if (depth > 1) { return vec3(0.0f); }
     
     vec3 color = vec3(0,0,0);
-    
-    vec3 realLocation = vec3(0,0,0);
     vec3 location = vec3(0,0,0);
-    
-    vec3 realNormal = vec3(0,0,0);;
     vec3 normal = vec3(0,0,0);
-    
-    float realTime = std::numeric_limits<float>::infinity();
-    float time = 0;
-    
+    float time = std::numeric_limits<float>::infinity();
     int closestObj = -1;
     
     // Loop over every object
     for (int obj = 0; obj < numObjects; obj++) {
-        // If the current object is intersected
-        if (objects[obj].intersects(ray, location, normal, time)) {
-            // If no object has been intersected before or current object is closer
-            // than the previous closest object
-            if (time < realTime) {
-                // Update the values corresponding to the closest object
-                realTime = time;
-                realLocation = location;
-                realNormal = normal;
-                closestObj = obj;
+        // If the current object is intersected and closer than the previous object
+        if (objects[obj].intersects(ray, location, normal, time, 0.01, time)) {
+            closestObj = obj;
+        }
+    }
+
+    if (closestObj != -1) {
+        // Dummy variable to pass to the intersects function in place of time
+        float dummy;
+        
+        // Ambient term
+        color += vec3(0.1f);
+        bool inShadow;
+        
+        // Loop over every light in the scene
+        for (int i = 0; i < lightsUsed; i++) {
+            vec3 lightDir = glm::normalize(lights[i].position-location);
+            
+            //Test to see if any object blocks the light
+            Ray shadowRay = {location,lightDir};
+            inShadow = false;
+            int o = 0;
+            while (o < numObjects && inShadow == false) {
+                inShadow = objects[o].intersects(shadowRay, dummy, 0.001, std::numeric_limits<float>::infinity());
+                o++;
+            }
+            // If the object is not in shadow, calculate the lighting
+            if (inShadow == false) {
+                color += objects[closestObj].calcShading(normal, lights[i], lightDir);
             }
         }
     }
-    if (closestObj != -1) {
-        color = objects[closestObj].calcShading(realNormal, realLocation, lights, lightsUsed, objects, numObjects);
-    }
     
-    return color;
+    ray.origin = location;
+    ray.path = ray.path - 2*(glm::dot(ray.path,normal))*normal;
+    
+    color = color + objects[closestObj].getReflectance() * raytrace(ray, depth+1);
+    
+    return glm::min( color, vec3(255,255,255) );
 }
 
 int main(int argc, char* argv[]) {
@@ -96,10 +114,10 @@ int main(int argc, char* argv[]) {
 //    objects[1].set(vec3(3,0,0), 3, vec3(200,0,0), vec3(100,100,100), 100);
 //    objects[0].set(vec3(0,1,0), 3, vec3(200,0,0), vec3(100,100,100), 100);
     
-    float verts[9] = {0,0,4, 4,0,-4, -4,0,-4};
-    objects[0].set(verts, vec3(200,0,0), vec3(100,100,100), 100);
+    float verts[9] = {0,0,4, 4,0,-4, -4,2,-4};
+    objects[0].set(verts, vec3(100,100,100), vec3(0,0,0), 100, vec3(0.0f));
     float verts2[9] = {2,3,4, 2,3,-4, 1,0,0};
-    objects[1].set(verts2, vec3(200,0,0), vec3(100,100,100), 100);
+    objects[1].set(verts2, vec3(200,0,0), vec3(100,100,100), 100, vec3(0,0.6,0));
     numObjects = 2;
 
     FreeImage_Initialise();
