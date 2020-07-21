@@ -8,40 +8,75 @@
 #include <iostream>
 #include "geometry.hpp"
 
+
+// Material Class
+
+Material::Material() {
+    diffuse = vec3(0.0f);
+    specular = vec3(0.0f);
+    phongExp = 0;
+    reflectance = vec3(0.0f);
+}
+
+Material::Material(vec3 diff, vec3 spec, float p, vec3 ref) {
+    diffuse = diff;
+    specular = spec;
+    phongExp = p;
+    reflectance = ref;
+}
+
+void Material::set(vec3 diff, vec3 spec, float p, vec3 ref) {
+    diffuse = diff;
+    specular = spec;
+    phongExp = p;
+    reflectance = ref;
+}
+
+vec3 Material::calcShading(vec3 normal, Light light, vec3 lightDir) {
+    vec3 total = vec3(0.0f);
+    
+    //Calculate diffuse component
+    float LdotN = glm::dot(lightDir, normal);
+    total += diffuse * light.intensity * glm::max(LdotN, 0.0f);
+    
+    //Calculate specular component
+    vec3 halfvec = glm::normalize(lightDir + normal);
+    float NdotH = glm::dot(normal, halfvec);
+    total += specular * light.intensity * glm::pow( glm::max(NdotH, 0.0f), phongExp );
+    
+    return glm::min( total, vec3(255,255,255) );
+}
+
+vec3 Material::getReflectance() {
+    return reflectance;
+}
+
+
+
 // Sphere Class
 
 // Default constructor
 Sphere::Sphere() {
     position = vec3(0.0f);
     radius = 0;
-    diffuse = vec3(0.0f);
-    specular = vec3(0.0f);
-    phongExp = 0;
+    material.set( vec3(0.0f), vec3(0.0f), 0, vec3(0.0f) );
 }
 
 // Constructor for the Sphere class
-Sphere::Sphere(vec3 pos, float rad, vec3 diff, vec3 spec, float p) {
+Sphere::Sphere(vec3 pos, float rad, vec3 diff, vec3 spec, float p, vec3 ref) {
     position = pos;
     radius = rad;
-    diffuse = diff;
-    specular = spec;
-    phongExp = p;
+    material.set(diff, spec, p, ref);
 }
 
-void Sphere::set(vec3 pos, float rad, vec3 diff, vec3 spec, float p) {
+void Sphere::set(vec3 pos, float rad, vec3 diff, vec3 spec, float p, vec3 ref) {
     position = pos;
     radius = rad;
-    diffuse = diff;
-    specular = spec;
-    phongExp = p;
+    material.set(diff, spec, p, ref);
 }
-    
-// Color and normal passed by reference
-// Determine if ray hits sphere, update color and normal
-// Return boolean value indicating if the sphere is hit
-bool Sphere::intersects(Ray ray, vec3 &location, vec3 &normal, float &time) {
-    bool isHit = false;
-    time = 0.0;
+
+bool Sphere::intersects(Ray ray, float &time, float minTime, float maxTime) {
+    float t = 0.0;
     
     // Origin minus position (OMP)
     vec3 OMP = ray.origin - position;
@@ -52,46 +87,50 @@ bool Sphere::intersects(Ray ray, vec3 &location, vec3 &normal, float &time) {
     
     // If the dicriminant is less than 0, the ray does not intersect the sphere
     if (discriminant < 0.0) {
-        isHit = false;
+        return false;
     }
     // Otherwise, the ray intersects the sphere at least once.
     else{
         // Find the time value when discriminant = 0 (tangential intersection)
-        isHit = true;
-        time = glm::dot(-ray.path, OMP) / path_2;
+        t = glm::dot(-ray.path, OMP) / path_2;
         
         // If the discriminant is non-zero, there are two intersections
         // Find the smaller of the two time values
         if (discriminant > 0.0) {
-            time = time - (glm::sqrt(discriminant)/path_2);
+            t = t - (glm::sqrt(discriminant)/path_2);
         }
         
-        // Update the parameters
+        if (t > minTime && t < maxTime) {
+            time = t;
+            return true;
+        }
+    }
+    return false;
+}
+    
+// Color and normal passed by reference
+// Determine if ray hits sphere, update color and normal
+// Return boolean value indicating if the sphere is hit
+bool Sphere::intersects(Ray ray, vec3 &location, vec3 &normal, float &time, float minTime, float maxTime) {
+    bool success = intersects(ray, time, minTime, maxTime);
+    
+    if (success) {
         location = ray.origin + (time * ray.path);
         normal = glm::normalize( location - position );
     }
-    return isHit;
+    
+    return success;
 }
 
-vec3 Sphere::calcShading(vec3 normal, vec3 location, struct Light lights[], int lightsUsed, Sphere objects[], int numObjects) {
-    
-    vec3 total = vec3(0.1f);
-    
-    for (int i = 0; i < lightsUsed; i++) {
-        //Calculate diffuse component
-        vec3 lightDir = glm::normalize(lights[i].position-location);
-        float LdotN = glm::dot(lightDir, normal);
-        total += diffuse * lights[i].intensity * glm::max(LdotN, 0.0f);
-        
-        //Calculate specular component
-        vec3 halfvec = glm::normalize(lightDir + normal);
-        float NdotH = glm::dot(normal, halfvec);
-        total += specular * lights[i].intensity * glm::pow( glm::max(NdotH, 0.0f), phongExp );
-        
-    }
-    
-    return total;
+vec3 Sphere::calcShading(vec3 normal, Light light, vec3 lightDir) {
+    return material.calcShading(normal, light, lightDir);
 }
+
+vec3 Sphere::getReflectance() {
+    return material.getReflectance();
+}
+
+
 
 // Mesh Class
 
@@ -183,7 +222,6 @@ bool Mesh::intersects(Ray ray, vec3 &location, vec3 &normal, float &time, float 
 }
 
 vec3 Mesh::calcShading(vec3 normal, Light light, vec3 lightDir) {
-    
     return material.calcShading(normal, light, lightDir);
 }
 
@@ -191,45 +229,3 @@ vec3 Mesh::getReflectance() {
     return material.getReflectance();
 }
 
-
-// Material Class
-
-Material::Material() {
-    diffuse = vec3(0.0f);
-    specular = vec3(0.0f);
-    phongExp = 0;
-    reflectance = vec3(0.0f);
-}
-
-Material::Material(vec3 diff, vec3 spec, float p, vec3 ref) {
-    diffuse = diff;
-    specular = spec;
-    phongExp = p;
-    reflectance = ref;
-}
-
-void Material::set(vec3 diff, vec3 spec, float p, vec3 ref) {
-    diffuse = diff;
-    specular = spec;
-    phongExp = p;
-    reflectance = ref;
-}
-
-vec3 Material::calcShading(vec3 normal, Light light, vec3 lightDir) {
-    vec3 total = vec3(0.0f);
-    
-    //Calculate diffuse component
-    float LdotN = glm::dot(lightDir, normal);
-    total += diffuse * light.intensity * glm::max(LdotN, 0.0f);
-    
-    //Calculate specular component
-    vec3 halfvec = glm::normalize(lightDir + normal);
-    float NdotH = glm::dot(normal, halfvec);
-    total += specular * light.intensity * glm::pow( glm::max(NdotH, 0.0f), phongExp );
-    
-    return glm::min( total, vec3(255,255,255) );
-}
-
-vec3 Material::getReflectance() {
-    return reflectance;
-}

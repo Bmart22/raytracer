@@ -33,20 +33,6 @@ struct Light {
     vec3 intensity;
 };
 
-class Sphere {
-    vec3 position;
-    float radius;
-    vec3 diffuse;
-    vec3 specular;
-    float phongExp;
-public:
-    Sphere();
-    Sphere(vec3 pos, float rad, vec3 diff, vec3 spec, float p);
-    void set(vec3 pos, float rad, vec3 diff, vec3 spec, float p);
-    bool intersects(Ray ray, vec3 &location, vec3 &normal, float &time);
-    vec3 calcShading(vec3 normal, vec3 location, struct Light lights[], int lightsUsed, Sphere objects[], int numObjects);
-};
-
 class Material {
     vec3 diffuse;
     vec3 specular;
@@ -57,6 +43,20 @@ public:
     Material();
     Material(vec3 diff, vec3 spec, float p, vec3 ref);
     void set(vec3 diff, vec3 spec, float p, vec3 ref);
+    vec3 calcShading(vec3 normal, Light light, vec3 lightDir);
+    vec3 getReflectance();
+};
+
+class Sphere {
+    vec3 position;
+    float radius;
+    Material material;
+public:
+    Sphere();
+    Sphere(vec3 pos, float rad, vec3 diff, vec3 spec, float p, vec3 ref);
+    void set(vec3 pos, float rad, vec3 diff, vec3 spec, float p, vec3 ref);
+    bool intersects(Ray ray, float &time, float minTime, float maxTime);
+    bool intersects(Ray ray, vec3 &location, vec3 &normal, float &time, float minTime, float maxTime);
     vec3 calcShading(vec3 normal, Light light, vec3 lightDir);
     vec3 getReflectance();
 };

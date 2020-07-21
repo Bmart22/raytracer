@@ -27,7 +27,7 @@ int lightsUsed;
 struct Camera cam = { vec3(0,5,0), vec3(0,-1,0), 1 };
 
 //Sphere objects[10];
-Mesh objects[10];
+Sphere objects[10];
 int numObjects;
 
 Ray genCameraRay( int xCoor, int yCoor ) {
@@ -111,13 +111,13 @@ int main(int argc, char* argv[]) {
     lights[1].intensity = vec3(0.5,0.5,0.5);
     lightsUsed = 2;
     
-//    objects[1].set(vec3(3,0,0), 3, vec3(200,0,0), vec3(100,100,100), 100);
-//    objects[0].set(vec3(0,1,0), 3, vec3(200,0,0), vec3(100,100,100), 100);
+    objects[1].set(vec3(3,0,0), 3, vec3(100,100,100), vec3(100,100,100), 100, vec3(0.6f));
+    objects[0].set(vec3(-3,0,0), 2, vec3(200,0,0), vec3(100,100,100), 100, vec3(0.0f));
     
-    float verts[9] = {0,0,4, 4,0,-4, -4,2,-4};
-    objects[0].set(verts, vec3(100,100,100), vec3(0,0,0), 100, vec3(0.0f));
-    float verts2[9] = {2,3,4, 2,3,-4, 1,0,0};
-    objects[1].set(verts2, vec3(200,0,0), vec3(100,100,100), 100, vec3(0,0.6,0));
+//    float verts[9] = {0,0,4, 4,0,-4, -4,2,-4};
+//    objects[0].set(verts, vec3(100,100,100), vec3(0,0,0), 100, vec3(0.0f));
+//    float verts2[9] = {2,3,4, 2,3,-4, 1,0,0};
+//    objects[1].set(verts2, vec3(200,0,0), vec3(100,100,100), 100, vec3(0,0.6,0));
     numObjects = 2;
 
     FreeImage_Initialise();
