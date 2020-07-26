@@ -26,8 +26,8 @@ int lightsUsed;
 
 struct Camera cam = { vec3(0,5,0), vec3(0,-1,0), 1 };
 
-//Sphere objects[10];
 Sphere objects[10];
+//Mesh objects[10];
 int numObjects;
 
 Ray genCameraRay( int xCoor, int yCoor ) {
@@ -44,7 +44,6 @@ Ray genCameraRay( int xCoor, int yCoor ) {
     camRay.origin = cam.position;
     // FreeImage begins at the lower left corner
     camRay.path = (cam.focalLength * glm::normalize(cam.direction)) + (u*right) + (v*up);
-    //std::cout << glm::normalize(cam.direction).y;
     
     return camRay;
 }
@@ -64,7 +63,7 @@ vec3 raytrace( Ray ray, int depth = 0 ) {
     // Loop over every object
     for (int obj = 0; obj < numObjects; obj++) {
         // If the current object is intersected and closer than the previous object
-        if (objects[obj].intersects(ray, location, normal, time, 0.01, time)) {
+        if (objects[obj].intersects(ray, location, normal, time, 0.001, time)) {
             closestObj = obj;
         }
     }
@@ -86,7 +85,7 @@ vec3 raytrace( Ray ray, int depth = 0 ) {
             inShadow = false;
             int o = 0;
             while (o < numObjects && inShadow == false) {
-                inShadow = objects[o].intersects(shadowRay, dummy, 0.001, std::numeric_limits<float>::infinity());
+                inShadow = objects[o].intersects(shadowRay, dummy, 0.01, std::numeric_limits<float>::infinity());
                 o++;
             }
             // If the object is not in shadow, calculate the lighting
@@ -94,14 +93,16 @@ vec3 raytrace( Ray ray, int depth = 0 ) {
                 color += objects[closestObj].calcShading(normal, lights[i], lightDir);
             }
         }
+        
+        // Calculate reflection ray and recurse
+        ray.origin = location;
+        vec3 path = glm::normalize(ray.path);
+        ray.path = path - 2*(glm::dot(path,normal))*normal;
+        
+        color = color + objects[closestObj].getReflectance() * raytrace(ray, depth+1);
     }
     
-    ray.origin = location;
-    ray.path = ray.path - 2*(glm::dot(ray.path,normal))*normal;
-    
-    color = color + objects[closestObj].getReflectance() * raytrace(ray, depth+1);
-    
-    return glm::min( color, vec3(255,255,255) );
+    return color;
 }
 
 int main(int argc, char* argv[]) {
@@ -111,10 +112,10 @@ int main(int argc, char* argv[]) {
     lights[1].intensity = vec3(0.5,0.5,0.5);
     lightsUsed = 2;
     
-    objects[1].set(vec3(3,0,0), 3, vec3(100,100,100), vec3(100,100,100), 100, vec3(0.6f));
-    objects[0].set(vec3(-3,0,0), 2, vec3(200,0,0), vec3(100,100,100), 100, vec3(0.0f));
+    objects[0].set(vec3(3,0,0), 3, vec3(100,100,100), vec3(100,100,100), 100, vec3(0.6f));
+    objects[1].set(vec3(-3,0,0), 2, vec3(200,0,0), vec3(100,100,100), 100, vec3(0.0f));
     
-//    float verts[9] = {0,0,4, 4,0,-4, -4,2,-4};
+//    float verts[9] = {10,0,10, 6,0,0, 0,0,6};
 //    objects[0].set(verts, vec3(100,100,100), vec3(0,0,0), 100, vec3(0.0f));
 //    float verts2[9] = {2,3,4, 2,3,-4, 1,0,0};
 //    objects[1].set(verts2, vec3(200,0,0), vec3(100,100,100), 100, vec3(0,0.6,0));
@@ -129,6 +130,7 @@ int main(int argc, char* argv[]) {
     for (int i = 0; i < screenWidth; i++) {
         for (int j = 0; j < screenHeight; j++) {
             vec3 colVec = raytrace( genCameraRay(i,j) );
+            colVec = glm::min( colVec, vec3(255,255,255) );
             color.rgbRed = colVec.z;
             color.rgbGreen = colVec.y;
             color.rgbBlue = colVec.x;

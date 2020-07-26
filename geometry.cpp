@@ -83,7 +83,7 @@ bool Sphere::intersects(Ray ray, float &time, float minTime, float maxTime) {
     float path_2 = glm::dot(ray.path, ray.path);
     
     // Calculate the discriminant
-    float discriminant = glm::dot(ray.path, OMP)*glm::dot(ray.path, OMP) - path_2 * (glm::dot(OMP,OMP) - (radius*radius));
+    float discriminant = (glm::dot(ray.path, OMP)*glm::dot(ray.path, OMP)) - path_2 * (glm::dot(OMP,OMP) - (radius*radius));
     
     // If the dicriminant is less than 0, the ray does not intersect the sphere
     if (discriminant < 0.0) {
